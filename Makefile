@@ -4,7 +4,7 @@
 # Any extra options you need
 EXTRADEFS=
 
-# Graphics library to use, can be GD or ImageMagick.
+# Graphics library to use, can be GD (recommended) or ImageMagick (deprecated, outdated).
 IMG_LIB=GD
 #IMG_LIB=ImageMagick
 
@@ -26,15 +26,25 @@ override DEFS+=-DNO_SUPPORT_OLD_VER
 # method of storing the image index internally (in simple mode).
 override DEFS+=-DUSE_DELTA_QUEUE
 
-# Disable use of std::tr1::unordered_map if your compiler/C++ library
-# is old and doesn't have it. This will make many things slower.
-# override DEFS+=-DNO_TR1
+# Set this if you have a C++11 compatible compiler with std::unordered_map
+override DEFS+=-DHAVE_UNORDERED_MAP
+# For GCC the C++11 support also needs to be enabled explicitly
+override DEFS+=-std=c++11
+# If your compiler is older and has std::tr1::unordered_map use this
+# override DEFS+=-DHAVE_TR1_UNORDERED_MAP
 
 # This may help or hurt performance. Try it and see for yourself.
 override DEFS+=-fomit-frame-pointer
 
 # Force use of a platform independent 64-bit database format.
 override DEFS+=-DFORCE_64BIT
+
+# By default iqdb uses integer math for the similarity computation,
+# because it is often slightly faster than floating point math
+# (and iqdb cannot make use of SSE et.al.) You can remove this option
+# if you wish to compare both versions. This setting has
+# negligible impact on the value of the similarity result.
+override DEFS+=-DINTMATH
 
 # -------------------------
 #  no configuration below
@@ -43,6 +53,11 @@ override DEFS+=-DFORCE_64BIT
 .SUFFIXES:
 
 all:	iqdb
+
+.PHONY: clean
+
+clean:
+	rm -f *.o iqdb
 
 %.o : %.h
 %.o : %.cpp
@@ -58,7 +73,7 @@ haar.le.o :
 .ALWAYS:
 
 ifeq (${IMG_LIB},GD)
-IMG_libs = -lgd $(shell gdlib-config --ldflags; gdlib-config --libs)
+IMG_libs = -lgd -ljpeg -lpng $(shell gdlib-config --ldflags; gdlib-config --libs)
 IMG_flags = $(shell gdlib-config --cflags)
 IMG_objs = resizer.o
 override DEFS+=-DLIB_GD
@@ -83,11 +98,11 @@ test-resizer : test-resizer.o resizer.o debug.o
 	g++ -o $@ $^ ${CFLAGS} ${LDFLAGS} -g -lgd -ljpeg -lpng ${DEFS} ${EXTRADEFS} `gdlib-config --ldflags`
 
 %.o : %.cpp
-	g++ -c -o $@ $< -O2 -fpeel-loops ${CFLAGS} -DNDEBUG -Wall -DLinuxBuild -g ${IMG_flags} ${DEFS} ${EXTRADEFS}
+	g++ -c -o $@ $< -O2 ${CFLAGS} -DNDEBUG -Wall -DLinuxBuild -g ${IMG_flags} ${DEFS} ${EXTRADEFS}
 
 %.le.o : %.cpp
-	g++ -c -o $@ $< -O2 -fpeel-loops ${CFLAGS} -DCONV_LE -DNDEBUG -Wall -DLinuxBuild -g ${IMG_flags} ${DEFS} ${EXTRADEFS}
+	g++ -c -o $@ $< -O2 ${CFLAGS} -DCONV_LE -DNDEBUG -Wall -DLinuxBuild -g ${IMG_flags} ${DEFS} ${EXTRADEFS}
 
 %.S:	.ALWAYS
-	g++ -S -o $@ $*.cpp -O2 -fpeel-loops ${CFLAGS} -DNDEBUG -Wall -DLinuxBuild -g ${IMG_flags} ${DEFS} ${EXTRADEFS}
+	g++ -S -o $@ $*.cpp -O2 ${CFLAGS} -DNDEBUG -Wall -DLinuxBuild -g ${IMG_flags} ${DEFS} ${EXTRADEFS}
 

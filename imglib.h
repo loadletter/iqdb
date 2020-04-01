@@ -65,6 +65,8 @@ different but the majority of the actual code is the same for both types.
 
 namespace imgdb {
 
+typedef unsigned int uint;
+
 // Weights for the Haar coefficients.
 // Straight from the referenced paper:
 const float weightsf[2][6][3]={
@@ -255,7 +257,6 @@ protected:
 	container m_base;
 };
 
-template<>
 template<bool is_simple>
 class imageIdIndex_list<is_simple, false> {
 public:
@@ -380,7 +381,7 @@ struct index_iterator<false> : public sigMap<false>::iterator {
 	imageId id() const { return (*this)->first; }
 	SigStruct* sig() const { return (*this)->second; }
 	size_t index() const { return sig()->index; }
-	const lumin_int& avgl() const { return sig()->avgl; }
+	const lumin_native& avgl() const { return sig()->avgl; }
 	int width() const { return sig()->width; }
 	int height() const { return sig()->height; }
 	uint16_t set() const { return sig()->set; }
@@ -401,7 +402,7 @@ struct index_iterator<true> : public image_info_list::iterator {
 	imageId id() const { return (*this)->id; }
 	SigStruct* sig() const { throw usage_error("Not valid in read-only mode."); }
 	size_t index() const;	// implemented below
-	const lumin_int& avgl() const { return (*this)->avgl; }
+	const lumin_native& avgl() const { return (*this)->avgl; }
 	int width() const { return (*this)->width; }
 	int height() const { return (*this)->height; }
 	uint16_t set() const { return (*this)->set; }
@@ -417,7 +418,6 @@ template<bool is_simple, typename B>
 struct id_index_iterator;
 
 // In normal mode, the imageIdIndex_map stores image IDs. Get the index from the dbSpace's linked SigStruct.
-template<>
 template<typename B>
 struct id_index_iterator<false,B> : public B {
 	typedef B base_type;
@@ -428,7 +428,6 @@ struct id_index_iterator<false,B> : public B {
 };
 
 // In read-only/simple mode, the imageIdIndex_map stores the index directly.
-template<>
 template<typename B>
 struct id_index_iterator<true,B> : public B {
 	typedef B base_type;
@@ -489,7 +488,7 @@ public:
 	static void imgDataFromFile(const char* filename, imageId id, ImgData* img);
 	static void imgDataFromBlob(const void* data, size_t data_size, imageId id, ImgData* img);
 
-	static bool is_grayscale(const lumin_int& avgl);
+	static bool is_grayscale(const lumin_native& avgl);
 
 	virtual bool isImageGrayscale(imageId id);
 	virtual Score calcAvglDiff(imageId id1, imageId id2);
@@ -502,7 +501,7 @@ public:
 
 protected:
 	virtual void getImgDataByID(imageId id, ImgData* img) = 0;
-	virtual void getImgAvgl(imageId id, lumin_int avgl) = 0;
+	virtual void getImgAvgl(imageId id, lumin_native& avgl) = 0;
 
 	static void sigFromImage(Image* image, imageId id, ImgData* sig);
 
@@ -605,7 +604,7 @@ private:
 	void addSigToBuckets(const ImgData* nsig);
 
 	void getImgDataByID(imageId id, ImgData* img) { *img = get_sig_from_cache(id); }
-	void getImgAvgl(imageId id, lumin_int avgl) { memcpy(avgl, find(id).avgl(), sizeof(avgl)); }
+	void getImgAvgl(imageId id, lumin_native& avgl) { avgl = find(id).avgl(); }
 
 	size_t get_sig_cache();
 	ImgData get_sig_from_cache(imageId i);
@@ -670,7 +669,7 @@ protected:
 
 	ImageMap::iterator find(imageId i);
 	void getImgDataByID(imageId id, ImgData* img) { *img = get_sig(m_images.find(id)->second); }
-	void getImgAvgl(imageId id, lumin_int avgl) { image_info::avglf2i(get_sig(m_images.find(id)->second).avglf, avgl); }
+	void getImgAvgl(imageId id, lumin_native& avgl) { image_info::avglf2i(get_sig(m_images.find(id)->second).avglf, avgl); }
 	ImgData get_sig(size_t ind);
 
 	virtual void load(const char* filename);
